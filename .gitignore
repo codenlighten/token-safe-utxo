@@ -1,1 +1,3 @@
 node_modules/
+# Registration evidence: opening.json and manifest.json are private and stay with the authors.
+.iptrust/
