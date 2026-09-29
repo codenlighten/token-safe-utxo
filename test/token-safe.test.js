@@ -51,19 +51,58 @@ test('collects every protected outpoint from both listings', async () => {
   assert.deepEqual([...set].sort(), [...inscriptions, ...bsv20].map(key).sort())
 })
 
-test('pages until a short page, advancing the offset by rows received', async () => {
-  const many = Array.from({ length: 25 }, (_, i) => ({ txid: txid(i + 1), vout: 0, origin: { data: { insc: {} } } }))
+const inscribed = n => Array.from({ length: n }, (_, i) => ({ txid: txid(i + 1), vout: 0, origin: { outpoint: `${txid(i + 1)}_0`, data: { insc: {} } } }))
+
+test('pages with a one-row overlap and ends on a page with nothing new', async () => {
   const calls = []
-  const set = await collectProtectedOutpoints(lister([[many], [[]]], calls), { pageSize: 10 })
+  const set = await collectProtectedOutpoints(lister([[inscribed(25)], [[]]], calls), { pageSize: 10 })
   assert.equal(set.size, 25)
-  assert.deepEqual(calls.filter(c => !c.bsv20).map(c => c.offset), [0, 10, 20])
+  assert.deepEqual(calls.filter(c => !c.bsv20).map(c => c.offset), [0, 9, 18, 24])
 })
 
-test('an exactly full last page triggers one more (empty) request', async () => {
-  const ten = Array.from({ length: 10 }, (_, i) => ({ txid: txid(i + 1), vout: 0, data: { insc: {} } }))
-  const calls = []
-  await collectProtectedOutpoints(lister([[ten], [[]]], calls), { pageSize: 10 })
-  assert.deepEqual(calls.filter(c => !c.bsv20).map(c => c.offset), [0, 10])
+test('a server that caps pages below the requested size is still read to the end (no silent truncation)', async () => {
+  const all = inscribed(250)
+  const capped = async ({ offset, bsv20 }) => bsv20 ? [] : all.slice(offset, offset + 30) // ignores limit=100
+  const set = await collectProtectedOutpoints(capped, { pageSize: 100 })
+  assert.equal(set.size, 250)
+})
+
+test('a short page mid-scan does not end the scan early', async () => {
+  const all = inscribed(25)
+  let n = 0
+  const flaky = async ({ offset, limit, bsv20 }) => {
+    if (bsv20) return []
+    n++
+    return all.slice(offset, offset + (n === 2 ? 3 : limit)) // second page comes back short
+  }
+  const set = await collectProtectedOutpoints(flaky, { pageSize: 10 })
+  assert.equal(set.size, 25)
+})
+
+test('fails closed when rows shift during the scan (something on an earlier page was spent)', async () => {
+  const all = inscribed(25)
+  let n = 0
+  const shifting = async ({ offset, limit, bsv20 }) => {
+    if (bsv20) return []
+    const rows = n++ === 0 ? all : all.slice(1) // row 1 spent after the first page
+    return rows.slice(offset, offset + limit)
+  }
+  await assert.rejects(collectProtectedOutpoints(shifting, { pageSize: 10 }), e => e.code === 'INCOMPLETE_SCAN')
+})
+
+test('fails closed when a row appears twice in one scan', async () => {
+  const all = inscribed(12)
+  all.splice(11, 0, all[3]) // a duplicate later in the listing
+  await assert.rejects(collectProtectedOutpoints(lister([[all], [[]]]), { pageSize: 10 }), e => e.code === 'INCOMPLETE_SCAN')
+})
+
+test('real inscriptions reported with an origin but no data are protected', () => {
+  const unmarked = fixture('gorillapool-unmarked-ordinal')
+  assert.ok(unmarked.length > 0)
+  for (const t of unmarked) {
+    assert.equal(t.origin.data ?? null, null)
+    assert.equal(isProtectedTxo(t), true, t.outpoint)
+  }
 })
 
 test('fails closed: indexer error', async () => {
@@ -95,6 +134,18 @@ test('filterSpendable holds indexed and 1-sat outputs, with reasons', () => {
   assert.deepEqual(held.map(h => h.reason), ['indexed', 'one-sat'])
   assert.equal(filterSpendable(utxos, new Set(), { holdOneSat: false }).spendable.length, 3)
   assert.throws(() => filterSpendable(utxos, []), TypeError)
+})
+
+test('filterSpendable refuses UTXO shapes that would fail open', () => {
+  const set = new Set([`${txid(1)}:0`])
+  // Raw WhatsOnChain rows: no txid/vout/satoshis.
+  assert.throws(() => filterSpendable([{ tx_hash: txid(1), tx_pos: 0, value: 546 }], set), TypeError)
+  assert.throws(() => filterSpendable([{ txid: txid(1), vout: '0', satoshis: 546 }], set), TypeError)
+  // An upper-case txid still matches the protected set.
+  const hexTxid = 'ab'.repeat(32)
+  const { spendable, held } = filterSpendable([{ txid: hexTxid.toUpperCase(), vout: 0, satoshis: 546 }], new Set([`${hexTxid}:0`]))
+  assert.equal(spendable.length, 0)
+  assert.equal(held[0].reason, 'indexed')
 })
 
 test('gorillaPoolLister builds the documented URLs and surfaces HTTP errors', async () => {

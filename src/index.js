@@ -2,15 +2,16 @@
 // plain satoshis.
 //
 // The contract is fail-closed. If the indexer can't be reached, returns
-// something unexpected, or has more outputs than a scan is allowed to read,
-// collectProtectedOutpoints throws and the caller must not build a
-// transaction. A wallet that spends "unprotected" coins after a failed check
-// can burn an NFT or destroy a token balance by paying it as fee or change.
+// something unexpected, pages inconsistently, or has more outputs than a scan
+// is allowed to read, collectProtectedOutpoints throws and the caller must not
+// build a transaction. A wallet that spends "unprotected" coins after a failed
+// check can burn an NFT or destroy a token balance by paying it as fee or
+// change.
 
 /** Markers that make an output unsafe to spend as plain satoshis. */
 export const PROTECTED_MARKERS = Object.freeze(['insc', 'bsv20', 'bsv21', 'lock'])
 
-export const DEFAULT_PAGE_SIZE = 1000 // GorillaPool caps a page at 1000 rows
+export const DEFAULT_PAGE_SIZE = 1000
 export const DEFAULT_MAX_PAGES = 50
 
 /** Thrown whenever the protected set can't be established completely. */
@@ -35,12 +36,15 @@ function hasMarker (data) {
 
 /**
  * True when an indexer output carries an inscription, a BSV-20/21 token or a
- * lock, in either its own data or its origin's data.
+ * lock (in its own data or its origin's data), or has an ordinal origin at
+ * all. The indexer reports some real inscriptions with an origin outpoint but
+ * no data, and plain satoshis with origin null.
  * @param {any} txo an output as returned by the 1Sat indexer
  */
 export function isProtectedTxo (txo) {
   if (txo == null || typeof txo !== 'object') return false
-  return hasMarker(txo.data) || hasMarker(txo.origin?.data)
+  if (hasMarker(txo.data) || hasMarker(txo.origin?.data)) return true
+  return typeof txo.origin?.outpoint === 'string' && txo.origin.outpoint.length > 0
 }
 
 /**
@@ -50,19 +54,26 @@ export function isProtectedTxo (txo) {
  * @returns {string}
  */
 export function outpointKey (txo) {
-  if (typeof txo?.txid === 'string' && /^[0-9a-f]{64}$/.test(txo.txid) && Number.isInteger(txo.vout) && txo.vout >= 0) {
-    return `${txo.txid}:${txo.vout}`
+  if (typeof txo?.txid === 'string' && /^[0-9a-fA-F]{64}$/.test(txo.txid) && Number.isInteger(txo.vout) && txo.vout >= 0) {
+    return `${txo.txid.toLowerCase()}:${txo.vout}`
   }
-  const m = typeof txo?.outpoint === 'string' && txo.outpoint.match(/^([0-9a-f]{64})_(\d+)$/)
-  if (m) return `${m[1]}:${Number(m[2])}`
+  const m = typeof txo?.outpoint === 'string' && txo.outpoint.match(/^([0-9a-fA-F]{64})_(\d+)$/)
+  if (m) return `${m[1].toLowerCase()}:${Number(m[2])}`
   throw new TokenSafetyError('MISSING_OUTPOINT', 'Indexer returned an output without a usable outpoint; refusing to classify it.')
 }
 
 /**
- * Reads every page of both listings (the plain one, where ordinals and locks
- * appear, and the BSV-20 one, where every row is a token output) and returns
- * the set of protected "txid:vout" keys. Throws TokenSafetyError on anything
- * short of a complete scan.
+ * Reads both listings (the plain one, where ordinals and locks appear, and the
+ * BSV-20 one, where every row is a token output) and returns the set of
+ * protected "txid:vout" keys.
+ *
+ * Offset paging has no snapshot, so each page after the first is requested
+ * from one row back and must start with the previous page's last row; a scan
+ * ends only on a page with nothing new. That turns a server-side page cap, a
+ * short page mid-scan, and rows shifting because something was spent into a
+ * TokenSafetyError (the caller retries) instead of a silently partial set. It
+ * can't detect a change after its last read, which is why callers should fetch
+ * the wallet's UTXOs *before* calling this.
  *
  * @param {(args: { offset: number, bsv20: boolean, limit: number }) => Promise<unknown>} listPage
  * @param {{ pageSize?: number, maxPages?: number }} [options]
@@ -71,18 +82,23 @@ export function outpointKey (txo) {
 export async function collectProtectedOutpoints (listPage, options = {}) {
   const pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE
   const maxPages = options.maxPages ?? DEFAULT_MAX_PAGES
+  if (!Number.isInteger(pageSize) || pageSize < 2) throw new RangeError('pageSize must be an integer of at least 2')
   const protectedSet = new Set()
 
   for (const bsv20 of [false, true]) {
+    const label = bsv20 ? 'token' : 'ordinal'
+    const seen = new Set()
     let offset = 0
+    let previousLast = null
     for (let page = 0; ; page++) {
       if (page >= maxPages) {
         throw new TokenSafetyError('INCOMPLETE_SCAN',
-          `More than ${maxPages} pages of ${bsv20 ? 'token' : 'ordinal'} outputs; cannot verify every UTXO is safe to spend.`)
+          `More than ${maxPages} pages of ${label} outputs; cannot verify every UTXO is safe to spend.`)
       }
+      const requestOffset = previousLast === null ? offset : offset - 1
       let rows
       try {
-        rows = await listPage({ offset, bsv20, limit: pageSize })
+        rows = await listPage({ offset: requestOffset, bsv20, limit: pageSize })
       } catch (e) {
         throw new TokenSafetyError('INDEXER_UNAVAILABLE',
           `Ordinal/token indexer unavailable (${e?.message ?? e}); cannot verify UTXOs are safe to spend.`, e)
@@ -94,12 +110,28 @@ export async function collectProtectedOutpoints (listPage, options = {}) {
         throw new TokenSafetyError('UNEXPECTED_RESPONSE',
           `Indexer returned ${rows.length} rows for a page of ${pageSize}; paging can't be trusted.`)
       }
-      for (const txo of rows) {
-        // Every row of the BSV-20 listing is a token output.
-        if (bsv20 || isProtectedTxo(txo)) protectedSet.add(outpointKey(txo))
+
+      let fresh = rows
+      if (previousLast !== null) {
+        if (rows.length === 0 || outpointKey(rows[0]) !== previousLast) {
+          throw new TokenSafetyError('INCOMPLETE_SCAN',
+            `The ${label} listing changed or paged inconsistently during the scan; retry.`)
+        }
+        fresh = rows.slice(1)
       }
-      if (rows.length < pageSize) break
-      offset += rows.length
+      if (fresh.length === 0) break
+
+      for (const txo of fresh) {
+        const key = outpointKey(txo)
+        if (seen.has(key)) {
+          throw new TokenSafetyError('INCOMPLETE_SCAN', `The ${label} listing returned ${key} twice during one scan; retry.`)
+        }
+        seen.add(key)
+        // Every row of the BSV-20 listing is a token output.
+        if (bsv20 || isProtectedTxo(txo)) protectedSet.add(key)
+      }
+      offset += fresh.length
+      previousLast = outpointKey(rows[rows.length - 1])
     }
   }
   return protectedSet
@@ -125,7 +157,13 @@ export function filterSpendable (utxos, protectedSet, options = {}) {
   const spendable = []
   const held = []
   for (const utxo of utxos) {
-    if (protectedSet.has(`${utxo.txid}:${utxo.vout}`)) held.push({ utxo, reason: 'indexed' })
+    // A shape mismatch must not fail open: an unknown key never matches the
+    // protected set, and a missing satoshis field would skip the 1-sat rule.
+    if (typeof utxo?.txid !== 'string' || !/^[0-9a-fA-F]{64}$/.test(utxo.txid) ||
+        !Number.isInteger(utxo.vout) || utxo.vout < 0 || !Number.isFinite(utxo.satoshis)) {
+      throw new TypeError('Each UTXO needs { txid: 64 hex chars, vout: non-negative integer, satoshis: number }')
+    }
+    if (protectedSet.has(`${utxo.txid.toLowerCase()}:${utxo.vout}`)) held.push({ utxo, reason: 'indexed' })
     else if (holdOneSat && utxo.satoshis === 1) held.push({ utxo, reason: 'one-sat' })
     else spendable.push(utxo)
   }
