@@ -1,0 +1,217 @@
+{
+ "source": "GET ordinals.gorillapool.io/api/txos/address/1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb/unspent?limit=20&offset=0&bsv20=true (first 3 rows)",
+ "fetched": "2026-09-29",
+ "rows": [
+  {
+   "txid": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb",
+   "vout": 2,
+   "outpoint": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb_2",
+   "satoshis": 1,
+   "accSats": "2",
+   "height": 968842,
+   "idx": "1585",
+   "owner": "1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb",
+   "spend": "",
+   "spend_height": null,
+   "spend_idx": null,
+   "origin": {
+    "outpoint": "2bc6391f5118b1a2297905d922e5aee9edf61071cb756ccd6270b61c0004baea_1",
+    "data": {
+     "insc": {
+      "file": {
+       "hash": "cavH5o2slNvfiZBW10RRa1xT51r5OyqcSlrOkUDH8rw=",
+       "size": 124,
+       "type": "application/bsv-20"
+      },
+      "json": {
+       "p": "bsv-20",
+       "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+       "op": "transfer",
+       "amt": "14676893915"
+      }
+     },
+     "bsv20": {
+      "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+      "op": "transfer",
+      "amt": 14676893915,
+      "listing": false
+     },
+     "types": [
+      "json"
+     ]
+    },
+    "num": "0968841:112709:2"
+   },
+   "data": {
+    "insc": {
+     "file": {
+      "hash": "cavH5o2slNvfiZBW10RRa1xT51r5OyqcSlrOkUDH8rw=",
+      "size": 124,
+      "type": "application/bsv-20"
+     },
+     "json": {
+      "p": "bsv-20",
+      "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+      "op": "transfer",
+      "amt": "14676893915"
+     }
+    },
+    "bsv20": {
+     "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+     "op": "transfer",
+     "amt": 14676893915,
+     "listing": false
+    },
+    "types": [
+     "json"
+    ]
+   }
+  },
+  {
+   "txid": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb",
+   "vout": 1,
+   "outpoint": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb_1",
+   "satoshis": 1,
+   "accSats": "1",
+   "height": 968842,
+   "idx": "1585",
+   "owner": "1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb",
+   "spend": "",
+   "spend_height": null,
+   "spend_idx": null,
+   "origin": {
+    "outpoint": "a214ba975084c305ab6cce8e29f8cc86ddca82f2b756282b45cfcb9202fb8591_10",
+    "data": {
+     "insc": {
+      "file": {
+       "hash": "kAxt7i6zp3O1Vopn6zUBeBZtZse3GlLcEKaSY0LIm/8=",
+       "size": 124,
+       "type": "application/bsv-20"
+      },
+      "json": {
+       "p": "bsv-20",
+       "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+       "op": "transfer",
+       "amt": "50000000000"
+      }
+     },
+     "list": {
+      "price": 13742000,
+      "payout": "sK/RAAAAAAAZdqkUw4oTDfL3Bvm5RkAxo8bjaWH5c2eIrA=="
+     },
+     "bsv20": {
+      "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+      "op": "transfer",
+      "amt": 50000000000,
+      "listing": false
+     },
+     "types": [
+      "json"
+     ]
+    },
+    "num": "0961157:426:1"
+   },
+   "data": {
+    "insc": {
+     "file": {
+      "hash": "96JdWLLXCDkUv8qANhY7tSfwbB/Wb1CCciskeo17pYM=",
+      "size": 124,
+      "type": "application/bsv-20"
+     },
+     "json": {
+      "p": "bsv-20",
+      "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+      "op": "transfer",
+      "amt": "25000000000"
+     }
+    },
+    "list": {
+     "price": 5317250,
+     "payout": "giJRAAAAAAAZdqkUw4oTDfL3Bvm5RkAxo8bjaWH5c2eIrA=="
+    },
+    "bsv20": {
+     "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+     "op": "transfer",
+     "amt": 25000000000,
+     "listing": false
+    },
+    "types": [
+     "json"
+    ]
+   }
+  },
+  {
+   "txid": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb",
+   "vout": 0,
+   "outpoint": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb_0",
+   "satoshis": 1,
+   "accSats": "0",
+   "height": 968842,
+   "idx": "1585",
+   "owner": "1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb",
+   "spend": "",
+   "spend_height": null,
+   "spend_idx": null,
+   "origin": {
+    "outpoint": "eaf11b70ceb2e99810a8d0bdee5516f4dab1d1f789002b92c0cf82a77eb70d96_3",
+    "data": {
+     "insc": {
+      "file": {
+       "hash": "n0bG1uKSafSR5MQaH+lWGKrfZbk6WECoMiNdgOV66q4=",
+       "size": 123,
+       "type": "application/bsv-20"
+      },
+      "json": {
+       "p": "bsv-20",
+       "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+       "op": "transfer",
+       "amt": "1000000000"
+      }
+     },
+     "list": {
+      "price": 145280,
+      "payout": "gDcCAAAAAAAZdqkUw4oTDfL3Bvm5RkAxo8bjaWH5c2eIrA=="
+     },
+     "bsv20": {
+      "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+      "op": "transfer",
+      "amt": 1000000000,
+      "listing": false
+     },
+     "types": [
+      "json"
+     ]
+    },
+    "num": "0960618:17299:0"
+   },
+   "data": {
+    "insc": {
+     "file": {
+      "hash": "96JdWLLXCDkUv8qANhY7tSfwbB/Wb1CCciskeo17pYM=",
+      "size": 124,
+      "type": "application/bsv-20"
+     },
+     "json": {
+      "p": "bsv-20",
+      "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+      "op": "transfer",
+      "amt": "25000000000"
+     }
+    },
+    "list": {
+     "price": 4964250,
+     "payout": "mr9LAAAAAAAZdqkUw4oTDfL3Bvm5RkAxo8bjaWH5c2eIrA=="
+    },
+    "bsv20": {
+     "id": "429bf19906897c0444a53bdf236473b1b3965a95a03f20863de640f49241d929_0",
+     "op": "transfer",
+     "amt": 25000000000,
+     "listing": false
+    },
+    "types": [
+     "json"
+    ]
+   }
+  }
+ ]
+}

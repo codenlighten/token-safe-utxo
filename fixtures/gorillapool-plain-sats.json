@@ -1,0 +1,51 @@
+{
+ "source": "GET ordinals.gorillapool.io/api/txos/address/1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb/unspent?limit=20&offset=0 (first 3 rows)",
+ "fetched": "2026-09-29",
+ "rows": [
+  {
+   "txid": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb",
+   "vout": 3,
+   "outpoint": "6c299c5b86332f12783ba5b7a1c53776d70e44404d3bb18dea9ba0f11acf3aeb_3",
+   "satoshis": 4266505,
+   "accSats": "3",
+   "height": 968842,
+   "idx": "1585",
+   "owner": "1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb",
+   "spend": "",
+   "spend_height": null,
+   "spend_idx": null,
+   "origin": null,
+   "data": null
+  },
+  {
+   "txid": "1bc495f0dba0f01f07fa65f8c4b343e6541bd201394d58e200f9d718f285b919",
+   "vout": 1,
+   "outpoint": "1bc495f0dba0f01f07fa65f8c4b343e6541bd201394d58e200f9d718f285b919_1",
+   "satoshis": 1450000,
+   "accSats": "1",
+   "height": 968841,
+   "idx": "112700",
+   "owner": "1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb",
+   "spend": "",
+   "spend_height": null,
+   "spend_idx": null,
+   "origin": null,
+   "data": null
+  },
+  {
+   "txid": "bdb2831a35f3fc7826b990825a6e19083ab6685f014862c80b9c866c96fcc5bb",
+   "vout": 1,
+   "outpoint": "bdb2831a35f3fc7826b990825a6e19083ab6685f014862c80b9c866c96fcc5bb_1",
+   "satoshis": 1450000,
+   "accSats": "1",
+   "height": 968830,
+   "idx": "34009",
+   "owner": "1JpvAzE1Ymw5SWmA9rEJjgnic2VH3u8YXb",
+   "spend": "",
+   "spend_height": null,
+   "spend_idx": null,
+   "origin": null,
+   "data": null
+  }
+ ]
+}
