@@ -69,11 +69,13 @@ export function outpointKey (txo) {
  *
  * Offset paging has no snapshot, so each page after the first is requested
  * from one row back and must start with the previous page's last row; a scan
- * ends only on a page with nothing new. That turns a server-side page cap, a
- * short page mid-scan, and rows shifting because something was spent into a
- * TokenSafetyError (the caller retries) instead of a silently partial set. It
- * can't detect a change after its last read, which is why callers should fetch
- * the wallet's UTXOs *before* calling this.
+ * ends only on a page with nothing new, confirmed by a second read at the same
+ * offset that must come back empty. That turns a server-side page cap, a short
+ * or overlap-only page mid-scan, a flaky empty first page, and rows shifting
+ * because something was spent into a TokenSafetyError (the caller retries)
+ * instead of a silently partial set. It can't detect a change after its last
+ * read, which is why callers should fetch the wallet's UTXOs *before* calling
+ * this, and keep the 1-sat hold in filterSpendable as a backstop.
  *
  * @param {(args: { offset: number, bsv20: boolean, limit: number }) => Promise<unknown>} listPage
  * @param {{ pageSize?: number, maxPages?: number }} [options]
@@ -90,12 +92,12 @@ export async function collectProtectedOutpoints (listPage, options = {}) {
     const seen = new Set()
     let offset = 0
     let previousLast = null
-    for (let page = 0; ; page++) {
-      if (page >= maxPages) {
+    let requests = 0
+    const read = async requestOffset => {
+      if (requests++ >= maxPages) {
         throw new TokenSafetyError('INCOMPLETE_SCAN',
           `More than ${maxPages} pages of ${label} outputs; cannot verify every UTXO is safe to spend.`)
       }
-      const requestOffset = previousLast === null ? offset : offset - 1
       let rows
       try {
         rows = await listPage({ offset: requestOffset, bsv20, limit: pageSize })
@@ -110,6 +112,10 @@ export async function collectProtectedOutpoints (listPage, options = {}) {
         throw new TokenSafetyError('UNEXPECTED_RESPONSE',
           `Indexer returned ${rows.length} rows for a page of ${pageSize}; paging can't be trusted.`)
       }
+      return rows
+    }
+    for (;;) {
+      const rows = await read(previousLast === null ? offset : offset - 1)
 
       let fresh = rows
       if (previousLast !== null) {
@@ -119,7 +125,15 @@ export async function collectProtectedOutpoints (listPage, options = {}) {
         }
         fresh = rows.slice(1)
       }
-      if (fresh.length === 0) break
+      if (fresh.length === 0) {
+        // Confirm the end: a flaky empty first page, or a capped/flaky page
+        // holding only the overlap row, must not end the scan.
+        if ((await read(offset)).length !== 0) {
+          throw new TokenSafetyError('INCOMPLETE_SCAN',
+            `The ${label} listing did not confirm its end at offset ${offset}; retry.`)
+        }
+        break
+      }
 
       for (const txo of fresh) {
         const key = outpointKey(txo)

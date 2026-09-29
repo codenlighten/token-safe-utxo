@@ -1,6 +1,6 @@
 {
   "name": "token-safe-utxo",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Fail-closed filter that keeps BSV wallets from spending ordinals, BSV-20/21 tokens and locks as plain satoshis",
   "type": "module",
   "main": "src/index.js",

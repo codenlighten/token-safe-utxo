@@ -11,10 +11,11 @@ sweep.
 `collectProtectedOutpoints` throws a `TokenSafetyError` on every inconsistency it can detect, and otherwise returns the
 protected outputs at an address.
 - It reads every page with a one-row overlap: each page after the first must start with the previous page's last row.
-- It stops only on a page with nothing new.
+- It stops only on a page with nothing new, and confirms that with a second read at the same offset, which must come
+  back empty. An empty first page is confirmed the same way.
 
-So a server that caps pages, a short page mid-scan, and rows shifting because something was spent during the scan all
-cause a throw, not a partial set.
+So a server that caps pages, a short (even overlap-only) page mid-scan, a flaky empty first page, and rows shifting
+because something was spent during the scan all cause a throw, not a partial set.
 
 Offset paging has no snapshot, so a change *after* the last read can't be detected. That's why the call order below
 matters.
@@ -41,6 +42,9 @@ an override, make it an explicit, separate decision in your UI.
 - **The token listing:** every row of the indexer's BSV-20 listing (`&bsv20=true`), marker or not.
 - **1-sat outputs:** `filterSpendable` also holds back every **1-sat** UTXO by default (`holdOneSat: true`), even one the
   indexer doesn't list. That's where ordinals live, and an indexer can lag behind one that has just arrived.
+  - It's also the backstop for what paging can't detect: an indexer that consistently returns an empty or stale listing.
+  - Every ordinal and token output measured on 2026-09-29 was 1 sat.
+  - Only turn it off if you have another way to see ordinals.
 
 ## Usage
 

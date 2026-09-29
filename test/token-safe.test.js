@@ -57,7 +57,36 @@ test('pages with a one-row overlap and ends on a page with nothing new', async (
   const calls = []
   const set = await collectProtectedOutpoints(lister([[inscribed(25)], [[]]], calls), { pageSize: 10 })
   assert.equal(set.size, 25)
-  assert.deepEqual(calls.filter(c => !c.bsv20).map(c => c.offset), [0, 9, 18, 24])
+  // ...then one confirming read at the end offset, which must be empty.
+  assert.deepEqual(calls.filter(c => !c.bsv20).map(c => c.offset), [0, 9, 18, 24, 25])
+})
+
+test('a page holding only the overlap row mid-scan is not taken as the end', async () => {
+  const all = inscribed(25)
+  let n = 0
+  const overlapOnly = async ({ offset, limit, bsv20 }) => {
+    if (bsv20) return []
+    n++
+    return all.slice(offset, offset + (n === 2 ? 1 : limit)) // second page: just the overlap row
+  }
+  await assert.rejects(collectProtectedOutpoints(overlapOnly, { pageSize: 10 }), e => e.code === 'INCOMPLETE_SCAN')
+})
+
+test('a flaky empty first page does not pass as an empty listing', async () => {
+  const all = inscribed(5)
+  let n = 0
+  const flakyFirst = async ({ offset, limit, bsv20 }) => {
+    if (bsv20) return []
+    return n++ === 0 ? [] : all.slice(offset, offset + limit)
+  }
+  await assert.rejects(collectProtectedOutpoints(flakyFirst, { pageSize: 10 }), e => e.code === 'INCOMPLETE_SCAN')
+})
+
+test('a genuinely empty listing is confirmed with a second read and returns an empty set', async () => {
+  const calls = []
+  const set = await collectProtectedOutpoints(lister([[[]], [[]]], calls))
+  assert.equal(set.size, 0)
+  assert.equal(calls.length, 4) // two reads per listing
 })
 
 test('a server that caps pages below the requested size is still read to the end (no silent truncation)', async () => {
